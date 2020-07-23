@@ -1,0 +1,15 @@
+---
+
+- hosts: all
+  become_method: su
+  become_user: root
+  become: yes
+  gather_facts: false
+  tasks:
+      - name: Assume sudo installed
+        apt: name=sudo state=present
+
+      - name: Install sudo
+        apt:
+            name: sudo
+            state: present

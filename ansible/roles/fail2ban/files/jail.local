@@ -1,0 +1,35 @@
+[DEFAULT]
+
+destmail = root@stud.host
+sender = root@stud.host
+mta = sendmail
+ignoreip = 127.0.0.1/8
+
+action = %(action_mwl)s
+
+[sshd]
+enabled = true
+port = 2020
+filter = sshd
+action = iptables[name=SSH, port=ssh, protocol=tcp]
+logpath = /var/log/auth.log
+bantime = 3600
+findtime = 1m
+maxretry = 3
+
+[portscan]
+enabled  = true
+filter   = portscan
+logpath  = /var/log/syslog
+bantime = 1m
+findtime = 1m
+maxretry = 1
+
+[nginx-dos]
+enabled = true
+filter = nginx-dos
+action = iptables-multiport[name=ReqLimit, port="http,https", protocol=tcp]
+logpath = /home/student/logs/netdata_error.log
+bantime = 10s
+findtime = 1m
+maxretry = 1

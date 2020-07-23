@@ -1,0 +1,94 @@
+---
+- name: Install nginx
+  apt: name=nginx state=present update_cache=yes
+
+- name: Fill netdata settings
+  lineinfile:
+    path: /etc/netdata/netdata.conf
+    line: 'bind to = unix:/tmp/netdata.sock'
+
+- name: Adjusting /etc/nginx/nginx.conf for security improvement
+  replace:
+      path: /etc/nginx/nginx.conf
+      regexp: '[#,]{0,2}server_tokens.+'
+      replace: 'server_tokens off;'
+      backup: yes
+
+- name: Adding DOS conf for Netdata in /etc/nginx/conf
+  lineinfile:
+      path: /etc/nginx/nginx.conf
+      line: "\tlimit_req_zone $binary_remote_addr zone=one:1m rate=20r/s;"
+      insertafter: default_type*
+      backup: yes
+
+- name: Creating logs folder
+  file:
+      path: /home/student/logs
+      state: directory
+      owner: student
+      group: user
+
+- name: Checking for selfsigned.crt
+  stat:
+     path: /etc/ssl/certs/selfsigned.crt
+  register: openssl
+
+- name: Creating self-encrypted SSL key and certificate
+  command: openssl req -x509 -nodes -days 365 -newkey rsa:4096 \
+      -subj /C=RU/ST=Moscow/L=Moscow/O=student.host/OU=student.host/CN=10.1.1.2/emailAddress=limry@student.21-school.ru \
+      -keyout /etc/ssl/private/selfsigned.key -out /etc/ssl/certs/selfsigned.crt
+  when: openssl.stat.exists == false
+
+- name: Checking for dhparam folder
+  stat:
+      path: /etc/ssl/dhparam
+  register: dhparam_folder
+
+- name: Creating of /etc/ssl/dhparam
+  file:
+      path: /etc/ssl/dhparam
+      state: directory
+      owner: root
+      group: root
+  when: dhparam_folder.stat.exists == false
+
+- name: Checking for dhparam.pem
+  stat:
+      path: /etc/ssl/dhparam/dhparam.pem
+  register: dhparam_file
+
+- name: Creating Diffie-Hellman group
+  command: openssl dhparam -dsaparam -out /etc/ssl/dhparam/dhparam.pem 2048
+  when: dhparam_file.stat.exists == false
+
+- name: Creating of Netdata Vhost
+  copy:
+      src: netdata.conf
+      dest: /etc/nginx/sites-available/
+      owner: root
+      group: root
+      mode: 0777
+  register: vhost
+
+- name: Modify default server
+  blockinfile:
+      path: /etc/nginx/sites-avaliable/
+      block:  |
+          server {
+              listen 433 default_server;
+              listen [::]:433 default_server;
+              root /var/www/html
+          }
+
+
+
+- name: Symlinking netdata.conf to /etc/nginx/sites-enabled
+  file:
+      src: /etc/nginx/sites-available/netdata.conf
+      dest: /etc/nginx/sites-enabled/netdata.conf
+      owner: root
+      group: root
+      state: link
+  when : vhost.changed
+  notify:
+      - Restarts Nginx

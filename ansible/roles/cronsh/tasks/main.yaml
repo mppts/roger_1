@@ -1,0 +1,52 @@
+---
+- name: Creating update_script.sh & notif_script.sh for crontab in /home/student
+  copy:
+      src: "{{ item }}"
+      dest: /home/student
+      owner: student
+      group: student
+      mode: a+x
+      backup: yes
+  with_items:
+      - update.sh
+      - notif.sh
+  register: cron
+
+- name: Creating an entry "0 4 * * 1 /home/student/update_script.sh" for cron
+  cron:
+      name: "update_script.sh 0 4 * * 1"
+      weekday: '1'
+      hour: '4'
+      minute: '0'
+      user: root
+      job: "/home/student/update_script.sh"
+      state: present
+
+- name: Creating an entry "@reboot /home/student/update_script.sh" for cron
+  cron:
+      name: "update_script.sh @reboot"
+      special_time: reboot
+      user: root
+      job: "/home/student/update.sh"
+      state: present
+
+- name: Creating an entry "0 0 * * * /home/student/notif_script.sh" for cron
+  cron:
+      name: "notfi_script.sh 0 0 * * *"
+      hour: '0'
+      minute: '0'
+      user: root
+      job: "/home/student/notif.sh"
+      state: present
+
+- name: Creating an entry "* * * * * /home/student/notif_script.sh" for cron
+  cron:
+      name: "notfi_script.sh * * * * *"
+      #hour: '0'
+      #minute: '0'
+      user: root
+      job: "/home/student/notif.sh"
+      state: absent
+
+
+

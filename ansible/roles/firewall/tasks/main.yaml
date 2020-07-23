@@ -1,0 +1,28 @@
+---
+- name: Install ufw
+  apt: name=ufw state=present update_cache=yes
+
+- name: Disable IPv6
+  replace:
+      path: /etc/default/ufw
+      regexp: "IPV6=yes"
+      replace: "IPV6=no"
+
+- name: Enable ufw 
+  service: name=ufw state=started enabled=yes
+
+- name: Setup conf of ufw
+  command: "{{ item }}"
+  with_items:
+      - ufw default deny incoming
+      - ufw default allow outgoing
+      - ufw allow 2020/tcp
+      - ufw allow 443/tcp
+      - ufw allow 80/tcp
+      - ufw allow 19999/tcp
+      - ufw allow ssh
+      - ufw allow postfix
+  environment:
+      PATH: "{{ ansible_env.PATH  }}:/sbin"
+  notify:
+      - restart ufw

@@ -1,0 +1,13 @@
+---
+- name: Add group student
+  group:
+      name: student
+      system: yes
+
+- name: Add User
+  user:
+      name: student
+      groups: student, sudo
+      password: "{{ '12345' | password_hash('sha512', '6789')  }}"
+      shell: /bin/bash
+      state: present

@@ -1,0 +1,34 @@
+---
+- name: Install UFW
+  apt: name=ufw state=present force_apt_get=yes
+
+- name: Setup configurations of in UFW policy
+  ufw:
+      direction: incoming
+      policy: deny
+
+- name: Setup configurations of out UFW policy
+  ufw:
+      direction: outgoing
+      policy: allow
+
+- name: Disable IPv6
+  ufw:
+      proto: ipv6
+      rule: deny
+
+- name: Setup ssh, http and https access
+  ufw:
+      port: "{{ item.port  }}" 
+      proto: "{{ item.prot }}"
+      rule: "{{ item.rule  }}"
+  with_items:
+      - { prot: "tcp", port: 80, rule: "allow" }
+      - { prot: "tcp", port: 443, rule: "allow" }
+      - { prot: "tcp", port: 2020, rule: "allow" }
+
+- name: Setup for brute force
+  ufw:
+      rule: limit
+      port: ssh
+      proto: tcp

@@ -1,0 +1,15 @@
+network:
+    ethernets:
+        enp0s3:
+            dhcp4: True
+            addresses: []
+        enp0s8:
+            dhcp4: False
+            dhcp6: False
+            addresses: 
+                - 10.1.1.2/30
+            nameservers:
+                addresses:
+                    - 8.8.8.8
+                    - 192.168.22.75
+

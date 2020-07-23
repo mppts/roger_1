@@ -1,0 +1,81 @@
+---
+
+- name: Install mail service
+  command: "{{ item  }}"
+  with_items:
+      - debconf-set-selections <<< 'postfix postfix/mailname string stud.host' 
+      - debconf-set-selections <<< 'postfix postfix/main_mailer_type string "Internet Site"' 
+
+- name: Install postfix
+  apt: name=postfix state=present update_cache=yes
+
+- name: Install mailx apt
+  apt: name=mailutils state=present update_cache=yes
+
+- name: Tweak the Postfix Conf
+  shell: "{{ item  }}"
+  with_items: 
+      - sudo postconf -e 'home_mailbox= Maildir/'
+      - sudo postconf -e 'virtual_alias_maps= hash:/etc/postfix/virtual'
+      - sudo touch /etc/postfix/virtual
+
+- name: Map mail addresses to linux accs
+  lineinfile:
+      path: /etc/postfix/virtual
+      line: " {{ item }}"
+  with_items:
+       - root@stud.host root
+       - student@stud.host student
+
+- name: Apply mail mapping
+  shell: sudo postmap /etc/postfix/virtual
+  notify:
+      - restart postfix
+
+- name: Make mail.sh file
+  file:
+      path: /etc/profile.d/mail.sh
+      mode: 0777
+      state: touch
+
+- name: Set up environment to match mail location
+  lineinfile:
+      path: "{{ item }}"
+      line: export MAIL=~/Maildir
+  with_items:
+      - /etc/bash.bashrc
+      - /etc/profile.d/mail.sh
+  
+- name: Activate mail location
+  become: no
+  shell: source /etc/profile.d/mail.sh
+  args: 
+    executable: /bin/bash
+
+- name: Install and configure Mail client
+  apt: name=s-nail state=present update_cache=yes
+
+- name: Configure s-nail for accessing inbox and sent
+  lineinfile:
+      path: /etc/s-nail.rc
+      line: "{{ item }}"
+  with_items:
+      - set epmtystart
+      - set folder=Maildir
+      - set record=+sent
+  notify:
+      - restart postfix
+  register: reg_post
+
+- name: Init the Maildir and test the client
+  shell: echo 'Welcome on the board, student!' | mailx -s 'Welcome!' student
+  when: reg_post.changed==true
+
+- name: Enable postfix service
+  service:
+      name: postfix
+      enabled: true
+  notify:
+      - restart postfix
+
+

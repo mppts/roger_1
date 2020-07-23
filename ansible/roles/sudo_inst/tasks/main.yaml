@@ -1,0 +1,6 @@
+---
+- name: Install sudo app
+  apt: name=sudo state=present force_apt_get=yes
+
+- name: Install rsync for deployment
+  apt: name=rsync state=present

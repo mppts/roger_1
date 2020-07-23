@@ -1,0 +1,56 @@
+---
+    
+#- name: Install dependecies
+#  apt: 
+#    name: ['zlib1g-dev', 'uuid-dev', 'libmnl-dev','gcc', 'make', 'git', 'autoconf', 'autoconf-archive','autogen', 'automake', 'pkg-config','curl']
+#    state: present
+#    update_cache: yes
+
+- name: Check if netdata is installed
+  stat:
+    path: /etc/netdata
+  register: netdata_status
+
+  #- name: Printing the environment variable in Ansible
+  # debug:
+  #  msg: "{{ netdata_status }}"
+#    url: https://my-netdata.io/kickstart-static64.sh
+
+- name: Get installation script
+  get_url:
+    url: https://my-netdata.io/kickstart.sh
+    dest: "{{ ansible_env.PWD }}/kickstart.sh"
+    mode: 0777
+  #shell: curl https://my-netdata.io/kickstart.sh
+  when: netdata_status.stat.exists==false
+
+- name: Install NetData
+  shell: "{{ item }}"
+  with_items:
+      - cd {{ ansible_env.PWD }}
+        #     - rm -rf netdata && mkdir netdata && cd netdata
+        # - curl https://my-netdata.io/kickstart.sh
+      - ./kickstart.sh  --dont-wait 
+      #- ./kickstart.sh --dont-wait
+      #- rm -rf netdata && git clone https://github.com/firehol/netdata.git --depth=1
+      #- sed -i 's/"$REPLY != ''"/1/' ./netdata/netdata-installer.sh
+      #- cd ./netdata/
+      #- ./netdata/netdata-installer.sh --libs-are-really-here --dont-wait
+  when: netdata_status.stat.exists==false
+
+
+- name: Enable netdata
+  service: name=netdata state=started enabled=yes
+  when: netdata_status.stat.exists==false
+
+- name: Send rc.local to /etc/
+  copy:
+     src: rc.local
+     dest: /etc/
+     owner: root
+     group: root
+     mode: preserve
+  notify: 
+    - restart netdata
+    
+

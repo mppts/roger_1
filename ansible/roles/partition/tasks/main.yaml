@@ -1,0 +1,40 @@
+
+---
+- name: Install Parted
+  apt: name=parted state=present
+  update_cahce: yes
+
+- name: Checking /dev/sda3
+  stat:
+      path: /dev/sda3
+  register: sda3
+
+- name: Creating a 4.2 GB parition
+  parted:
+      device: /dev/sda
+      number: 3
+      state: present
+      part_start: 3.5GB
+      part_end: 8GB
+  when: sda3.stat.exists == false
+  register: sda3_created
+
+- name: Formating partition in ext4
+  command: mkfs.ext4 /dev/sda3
+  when: sda3_created.changed
+  register: sda3_formated
+
+- name: Creating mountpoint for /dev/sda3 in /tmp
+  file:
+      path: /tmp/new_part
+      state: directory
+      owner: student
+      group: student
+  when: sda3_formated.changed
+
+- name: Mounting /dev/sda3 to /tmp/rs1-partition
+  mount:
+      path: /tmp/new_part
+      src: /dev/sda3
+      fstype: ext4
+      state: mounted

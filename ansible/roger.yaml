@@ -1,0 +1,15 @@
+---
+- hosts: all
+  become: yes
+  roles:
+      - sudo_inst
+      - user_mgnt
+      - netplan
+      - netdata
+      - mpostfix
+      - nginx
+      - fail2ban
+      - firewall
+      - cronsh
+      - sshconf
+      - finish

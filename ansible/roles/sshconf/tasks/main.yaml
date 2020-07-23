@@ -1,0 +1,64 @@
+---
+
+- name: If student can connect via ssh
+  become: no
+  local_action: shell ssh student@127.0.0.1 -p 2025 "echo success" || true
+  register: student_connected
+
+- name: Check student_key
+  become: no
+  local_action: 
+    module: stat
+    path: /Users/limry/.ssh/student_key
+  register: st_key
+
+- name: Create student_key key
+  become: no
+  local_action: shell ssh-keygen -b 2048 -t rsa -f /Users/limry/.ssh/student_key -q -N ""
+  when: (student_connected.stderr!="") and (st_key.stat.exists==false)
+
+- name: Create .ssh for student
+  file:
+      path: /home/student/.ssh
+      state: directory
+
+- name: Send pub student_key
+  copy:
+      dest: /home/student/.ssh/id_rsa.pub
+      src: /Users/limry/.ssh/id_rsa.pub
+  register: add_key
+
+  #- name: Send ssh key
+  #remote_user: student
+  #authorized_key:
+  #    user: student
+  #    state: present
+  #    key: /home/student/.ssh/student_key.pub
+- name: show add_key
+  debug:
+      var: add_key
+
+- name: Register key
+  shell: cat /home/student/.ssh/id_rsa.pub >> /home/student/.ssh/authorized_keys
+  notify:
+      - restart ssh
+  when: add_key.changed==true
+
+  #- name: Send SSH key
+  #become: no
+  #local_action: shell ssh-copy-id -i /Users/limry/.ssh/student_key student@127.0.0.1 -p2025
+
+- name: Setup port and perms of ssh
+  #shell: echo "Port 2020 \nPermitRootLogin no \nPasswordAuthentication no\n" >> /etc/ssh/sshd_config
+  replace:
+      path: /etc/ssh/sshd_config
+      regexp: "{{ item.what }}"
+      replace: "{{ item.to  }}"
+  with_items:
+      - { what: '[#,]{0,1}Port.+', to: 'Port 2020' }
+      - { what: '[#,]{0,1}PermitRootLogin.+', to: 'PermitRootLogin no' }
+      - { what: '[#,]{0,1}PasswordAuthentication.+', to: 'PasswordAuthentication no' }
+      - { what: '[#,]{0,1}PubkeyAuthentication.+', to: 'PubkeyAuthentication yes' }
+  notify: restart ssh
+  #when: student_connected.stderr!=""
+  
